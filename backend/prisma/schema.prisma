@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  avatar       String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  hostedMeetings Meeting[]            @relation("HostedMeetings")
+  participations MeetingParticipant[]
+  messages       Message[]
+}
+
+model Meeting {
+  id              String        @id @default(cuid())
+  meetingCode     String        @unique
+  title           String
+  hostId          String
+  host            User          @relation("HostedMeetings", fields: [hostId], references: [id])
+  status          MeetingStatus @default(SCHEDULED)
+  createdAt       DateTime      @default(now())
+  startedAt       DateTime?
+  endedAt         DateTime?
+  durationSeconds Int?
+
+  participants MeetingParticipant[]
+  recordings   Recording[]
+  messages     Message[]
+}
+
+model MeetingParticipant {
+  id        String          @id @default(cuid())
+  meetingId String
+  userId    String
+  role      ParticipantRole
+  joinedAt  DateTime        @default(now())
+  leftAt    DateTime?
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, userId])
+}
+
+model Recording {
+  id        String    @id @default(cuid())
+  meetingId String
+  fileName  String
+  filePath  String
+  fileSize  Int
+  duration  Int?
+  mimeType  String
+  startedAt DateTime
+  endedAt   DateTime?
+  createdAt DateTime  @default(now())
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  meetingId String
+  userId    String
+  message   String
+  createdAt DateTime @default(now())
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum MeetingStatus {
+  SCHEDULED
+  LIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum ParticipantRole {
+  HOST
+  PARTICIPANT
+}
